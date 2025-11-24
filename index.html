@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monitor DHT11</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #1d2b64;
+        background: linear-gradient(to right, #1d2b64, #f8cdda);
+        margin: 0;
+        color: #fff;
+        padding: 20px;
+    }
+    .card {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 20px;
+        border-radius: 14px;
+        margin-bottom: 20px;
+    }
+    h1 { text-align: center; }
+    .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
+</style>
+
+</head>
+<body>
+
+<h1>Monitor de Temperatura & Umidade</h1>
+
+<div class="card">
+    <h3>Leitura Atual</h3>
+    🌡️ Temperatura: <span id="temp_atual">--</span> °C <br>
+    💧 Umidade: <span id="umid_atual">--</span> %
+</div>
+
+<div class="card">
+    <h3>Médias</h3>
+    <div class="grid">
+        <div>
+            <b>10 Min</b><br>
+            Temp: <span id="m10t">--</span> °C<br>
+            Umid: <span id="m10u">--</span> %
+        </div>
+        <div>
+            <b>30 Min</b><br>
+            Temp: <span id="m30t">--</span> °C<br>
+            Umid: <span id="m30u">--</span> %
+        </div>
+        <div>
+            <b>1 Hora</b><br>
+            Temp: <span id="m60t">--</span> °C<br>
+            Umid: <span id="m60u">--</span> %
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Histórico</h3>
+    <canvas id="grafico" height="120"></canvas>
+</div>
+
+<script>
+    const ESP_IP = "http://192.168.137.100";
+    const tempData = [];
+    const labels = [];
+
+    const ctx = document.getElementById('grafico');
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Temperatura (°C)',
+                data: tempData,
+                borderColor: 'yellow',
+                borderWidth: 2
+            }]
+        },
+        options: {
+            scales: {
+                x: { display: false },
+                y: { beginAtZero: false }
+            }
+        }
+    });
+
+    async function atualizar() {
+        const resp = await fetch(`${ESP_IP}/dados`);
+        const d = await resp.json();
+
+        document.getElementById("temp_atual").innerText = d.temp_atual;
+        document.getElementById("umid_atual").innerText = d.umid_atual;
+
+        document.getElementById("m10t").innerText = d.media10_temp.toFixed(1);
+        document.getElementById("m30t").innerText = d.media30_temp.toFixed(1);
+        document.getElementById("m60t").innerText = d.media60_temp.toFixed(1);
+
+        document.getElementById("m10u").innerText = d.media10_umid.toFixed(1);
+        document.getElementById("m30u").innerText = d.media30_umid.toFixed(1);
+        document.getElementById("m60u").innerText = d.media60_umid.toFixed(1);
+
+        // adiciona ao gráfico
+        tempData.push(d.temp_atual);
+        labels.push("");
+
+        if (tempData.length > 60) { // mantém só os últimos 60 pontos
+            tempData.shift();
+            labels.shift();
+        }
+
+        chart.update();
+    }
+
+    setInterval(atualizar, 2000);
+</script>
+
+</body>
+</html>
